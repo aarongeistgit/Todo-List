@@ -9,32 +9,30 @@
 import UIKit
 import RealmSwift
 
-class CategoryViewController: UITableViewController {
+class CategoryViewController: SwipeTableViewController {
     
     let realm = try! Realm()
-    
     var categoryArray : Results<Category>?
-    
-    
     
     override func viewDidLoad() {
         super.viewDidLoad()
 
         let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-        
         print(dataFilePath)
         
         loadCategories()
-        
+
     }
+
 
     //MARK: - tableView datasource methods
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        
-        let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
-        
+
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
+
         cell.textLabel?.text = categoryArray?[indexPath.row].name ?? "No Categores Added"
+    
         
         return cell
         
@@ -68,7 +66,6 @@ class CategoryViewController: UITableViewController {
         
         alert.addAction(actionCancel)
         alert.addAction(action)
-        
         alert.addTextField { (alertTextField) in
             
             alertTextField.placeholder = "Create new category"
@@ -105,14 +102,24 @@ class CategoryViewController: UITableViewController {
         
     }
     
+    override func updateModel(at indexPath: IndexPath) {
+        if let categoryForDeleteion = self.categoryArray?[indexPath.row] {
+            do {
+                try self.realm.write {
+                    self.realm.delete(categoryForDeleteion)
+                }
+            } catch {
+                print("Error deleting from Realm: \(error)")
+            }
+
+        }
+    }
+    
     
     //MARK: - tableview delegate methods
     
-
-    
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        
         
         performSegue(withIdentifier: "goToItems", sender: self)
         
@@ -128,6 +135,6 @@ class CategoryViewController: UITableViewController {
         
     }
     
-
-    
 }
+
+
