@@ -36,7 +36,7 @@ class SwipeTableViewController: UITableViewController, SwipeTableViewCellDelegat
             print("Delete Cell")
             
             self.updateModel(at: indexPath)
-            
+        
         }
         
         // customize the action appearance

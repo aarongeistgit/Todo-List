@@ -15,6 +15,8 @@ class CategoryViewController: SwipeTableViewController {
     let realm = try! Realm()
     var categoryArray : Results<Category>?
     
+    var items : Results<Item>?       // for testing items for deletion
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -24,6 +26,10 @@ class CategoryViewController: SwipeTableViewController {
         loadCategories()
         
         tableView.separatorStyle = .none
+
+        let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(CategoryViewController.editCategoryName))
+        self.view.addGestureRecognizer(longPressGesture)
+
 
     }
 
@@ -38,8 +44,56 @@ class CategoryViewController: SwipeTableViewController {
         
         cell.backgroundColor = UIColor(hexString: categoryArray?[indexPath.row].color ?? "1D9BF6")
         cell.textLabel?.textColor = ContrastColorOf(cell.backgroundColor!, returnFlat: true)
+        
 
         return cell
+        
+    }
+    
+    // Gesture Long press
+    
+    @objc func editCategoryName(longPressGestureRecognizer: UILongPressGestureRecognizer) {
+        
+        if longPressGestureRecognizer.state == UIGestureRecognizerState.began {
+            
+            let touchPoint = longPressGestureRecognizer.location(in: self.view)
+            if let indexPath = tableView.indexPathForRow(at: touchPoint) {
+                
+                guard let category = categoryArray?[indexPath.row] else { fatalError() }
+                
+                var textFieldEntry = UITextField()
+                
+                let alert = UIAlertController(title: "Edit Category: \(category.name)", message: "", preferredStyle: .alert)
+                let action = UIAlertAction(title: "Change", style: .default) { (action) in
+                    
+                    do {
+                        try self.realm.write {
+                            category.name = textFieldEntry.text!
+                        }
+                    } catch {
+                        print("Error updating category name in Realm: \(error)")
+                    }
+                    self.tableView.reloadData()
+                    
+                }
+                
+                let actionCancel = UIAlertAction(title: "Cancel", style: .default) { (actionCancel) in
+                    
+                }
+                
+                alert.addAction(actionCancel)
+                alert.addAction(action)
+                alert.addTextField { (alertTextField) in
+                    
+                    alertTextField.text = category.name
+                    textFieldEntry = alertTextField
+                    
+                }
+                
+                present(alert, animated: true, completion: nil)    
+                
+            }
+        }
         
     }
     
@@ -103,7 +157,7 @@ class CategoryViewController: SwipeTableViewController {
     
     func loadCategories() {
         
-        categoryArray = realm.objects(Category.self)
+        categoryArray = realm.objects(Category.self).sorted(byKeyPath: "name")
         
         tableView.reloadData()
         
@@ -113,12 +167,17 @@ class CategoryViewController: SwipeTableViewController {
         if let categoryForDeleteion = self.categoryArray?[indexPath.row] {
             do {
                 try self.realm.write {
+                    
+                    for item in categoryForDeleteion.items {
+                        realm.delete(item)  //remove all child items
+                    }
+                    
                     self.realm.delete(categoryForDeleteion)
                 }
             } catch {
                 print("Error deleting from Realm: \(error)")
             }
-
+            
         }
     }
     
@@ -141,6 +200,39 @@ class CategoryViewController: SwipeTableViewController {
         }
         
     }
+    
+}
+
+// MARK:- Extensions
+
+extension CategoryViewController {
+    
+    override func motionEnded(_ motion: UIEventSubtype, with event: UIEvent?) {
+        
+        changeCategoryColors()
+        
+    }
+    
+    func changeCategoryColors() {
+        
+        if categoryArray != nil {
+            for category in categoryArray! {
+                do {
+                    try realm.write {
+                        category.color = UIColor.randomFlat.hexValue()
+                    }
+                } catch {
+                    print("Couldn't save new color for category: \(error)")
+                }
+            }
+            
+            tableView.reloadData()
+            
+        } else {
+            print("No categores to change color.")
+        }
+    }
+    
     
 }
 
